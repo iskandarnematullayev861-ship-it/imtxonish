@@ -5,6 +5,8 @@ const mongoose = require("mongoose");
 
 const isValidObjectId = (id) => typeof id === "string" && /^[0-9a-fA-F]{24}$/.test(id);
 
+const populateDistrict = (query) => query.populate("region_id");
+
 // --------------- Post / Create ---------------
 const postDistrict = async (req, res) => {
   try {
@@ -38,10 +40,12 @@ const postDistrict = async (req, res) => {
     const newDistrict = new District(data);
     await newDistrict.save();
 
+    const populated = await populateDistrict(District.findById(newDistrict._id));
+
     return res.status(201).json({
       success: true,
       message: "District muvaffaqiyatli yaratildi.",
-      data: newDistrict,
+      data: populated,
     });
   } catch (error) {
     console.error("Error creating District:", error);
@@ -69,11 +73,11 @@ const searchDistrict = async (req, res) => {
       return res.status(400).json({ message: "Invalid search query." });
     }
 
-    const result = await District.find({
+    const result = await populateDistrict(District.find({
       $or: [
         { name: { $regex: query, $options: "i" } },
       ],
-    });
+    }));
 
     if (result.length === 0) {
       return res.json({ message: "Bunday tuman topilmadi" });
@@ -89,7 +93,7 @@ const searchDistrict = async (req, res) => {
 // --------------- Get All ---------------
 const getDistricts = async (req, res) => {
   try {
-    const items = await District.find();
+    const items = await populateDistrict(District.find());
     res.status(200).json({
       success: true,
       message: "Barcha districtlar muvaffaqiyatli olindi.",
@@ -134,7 +138,9 @@ const updateDistrict = async (req, res) => {
       }
     }
 
-    const updatedItem = await District.findByIdAndUpdate(id, data, { new: true, returnDocument: 'after' });
+    const updatedItem = await populateDistrict(
+      District.findByIdAndUpdate(id, data, { new: true, returnDocument: 'after' })
+    );
 
     if (!updatedItem) {
       return res.status(404).json({
@@ -195,7 +201,7 @@ const getDistrictById = async (req, res) => {
       return res.status(400).json({ message: "Validatsiya xatoligi: Noto'g'ri ObjectId kiritildi" });
     }
 
-    const item = await District.findById(id);
+    const item = await populateDistrict(District.findById(id));
 
     if (!item) {
       return res.status(404).json({ message: "District topilmadi" });

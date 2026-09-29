@@ -1,6 +1,13 @@
 const { Event } = require("../models/event.model");
 const mongoose = require("mongoose");
 
+const populateEvent = (query) =>
+  query
+    .populate("event_type_id")
+    .populate("human_category_id")
+    .populate("venue_id")
+    .populate("lang_id");
+
 // --------------- Post / Create ---------------
 const postEvent = async (req, res) => {
   try {
@@ -8,10 +15,12 @@ const postEvent = async (req, res) => {
     const newEvent = new Event(data);
     await newEvent.save();
 
+    const populated = await populateEvent(Event.findById(newEvent._id));
+
     return res.status(201).json({
       success: true,
       message: "Event muvaffaqiyatli yaratildi.",
-      data: newEvent,
+      data: populated,
     });
   } catch (error) {
     console.error("Error creating Event:", error);
@@ -32,14 +41,14 @@ const searchEvent = async (req, res) => {
       return res.status(400).json({ message: "Invalid search query." });
     }
 
-    const result = await Event.find({
+    const result = await populateEvent(Event.find({
       $or: [
         { name: { $regex: query, $options: "i" } },
         { info: { $regex: query, $options: "i" } },
         { start_date: { $regex: query, $options: "i" } },
         { finish_date: { $regex: query, $options: "i" } },
       ],
-    });
+    }));
 
     if (result.length === 0) {
       return res.json({ message: "Bunday tadbir topilmadi" });
@@ -55,7 +64,7 @@ const searchEvent = async (req, res) => {
 // --------------- Get All ---------------
 const getEvents = async (req, res) => {
   try {
-    const items = await Event.find();
+    const items = await populateEvent(Event.find());
     res.status(200).json({
       success: true,
       message: "Barcha eventlar muvaffaqiyatli olindi.",
@@ -77,7 +86,9 @@ const updateEvent = async (req, res) => {
     const { id } = req.params;
     const data = req.body;
 
-    const updatedItem = await Event.findByIdAndUpdate(id, data, { new: true, returnDocument: 'after' });
+    const updatedItem = await populateEvent(
+      Event.findByIdAndUpdate(id, data, { new: true, returnDocument: 'after' })
+    );
 
     if (!updatedItem) {
       return res.status(404).json({
@@ -89,6 +100,7 @@ const updateEvent = async (req, res) => {
     res.status(200).json({
       success: true,
       message: "Event muvaffaqiyatli yangilandi",
+      data: updatedItem,
     });
   } catch (error) {
     res.status(500).json({
@@ -121,7 +133,7 @@ const getEventById = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const item = await Event.findById(id);
+    const item = await populateEvent(Event.findById(id));
 
     if (!item) {
       return res.status(404).json({ message: "Event topilmadi" });

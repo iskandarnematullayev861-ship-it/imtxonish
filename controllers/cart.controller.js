@@ -1,6 +1,11 @@
 const { Cart } = require("../models/cart.model");
 const mongoose = require("mongoose");
 
+const populateCart = (query) =>
+  query
+    .populate("customer_id")
+    .populate("status_id");
+
 // --------------- Post / Create ---------------
 const postCart = async (req, res) => {
   try {
@@ -8,10 +13,12 @@ const postCart = async (req, res) => {
     const newCart = new Cart(data);
     await newCart.save();
 
+    const populated = await populateCart(Cart.findById(newCart._id));
+
     return res.status(201).json({
       success: true,
       message: "Cart muvaffaqiyatli yaratildi.",
-      data: newCart,
+      data: populated,
     });
   } catch (error) {
     console.error("Error creating Cart:", error);
@@ -40,7 +47,9 @@ const searchCart = async (req, res) => {
       orConditions.push({ status_id: query });
     }
 
-    const result = await Cart.find(orConditions.length > 0 ? { $or: orConditions } : {});
+    const result = await populateCart(
+      Cart.find(orConditions.length > 0 ? { $or: orConditions } : {})
+    );
 
     if (result.length === 0) {
       return res.json({ message: "Bunday savatcha topilmadi" });
@@ -56,7 +65,7 @@ const searchCart = async (req, res) => {
 // --------------- Get All ---------------
 const getCarts = async (req, res) => {
   try {
-    const items = await Cart.find();
+    const items = await populateCart(Cart.find());
     res.status(200).json({
       success: true,
       message: "Barcha cartlar muvaffaqiyatli olindi.",
@@ -78,7 +87,9 @@ const updateCart = async (req, res) => {
     const { id } = req.params;
     const data = req.body;
 
-    const updatedItem = await Cart.findByIdAndUpdate(id, data, { new: true, returnDocument: 'after' });
+    const updatedItem = await populateCart(
+      Cart.findByIdAndUpdate(id, data, { new: true, returnDocument: 'after' })
+    );
 
     if (!updatedItem) {
       return res.status(404).json({
@@ -124,7 +135,7 @@ const getCartById = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const item = await Cart.findById(id);
+    const item = await populateCart(Cart.findById(id));
 
     if (!item) {
       return res.status(404).json({ message: "Cart topilmadi" });

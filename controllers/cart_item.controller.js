@@ -4,6 +4,11 @@ const mongoose = require("mongoose");
 
 const isValidObjectId = (id) => typeof id === "string" && /^[0-9a-fA-F]{24}$/.test(id);
 
+const populateCartItem = (query) =>
+  query
+    .populate("ticket_id")
+    .populate("cart_id");
+
 // --------------- Post / Create ---------------
 const postCartItem = async (req, res) => {
   try {
@@ -21,10 +26,12 @@ const postCartItem = async (req, res) => {
     const newCartItem = new CartItem(data);
     await newCartItem.save();
 
+    const populated = await populateCartItem(CartItem.findById(newCartItem._id));
+
     return res.status(201).json({
       success: true,
       message: "CartItem muvaffaqiyatli yaratildi.",
-      data: newCartItem,
+      data: populated,
     });
   } catch (error) {
     console.error("Error creating CartItem:", error);
@@ -46,7 +53,7 @@ const postCartItem = async (req, res) => {
 // --------------- Get All ---------------
 const getCartItems = async (req, res) => {
   try {
-    const items = await CartItem.find();
+    const items = await populateCartItem(CartItem.find());
     res.status(200).json({
       success: true,
       message: "Barcha cart_itemlar muvaffaqiyatli olindi.",
@@ -78,7 +85,9 @@ const updateCartItem = async (req, res) => {
       return res.status(400).json({ success: false, message: "Validatsiya xatoligi: ticket_id to'g'ri 24-belgili ObjectId bo'lishi kerak." });
     }
 
-    const updatedItem = await CartItem.findByIdAndUpdate(id, data, { new: true, returnDocument: 'after' });
+    const updatedItem = await populateCartItem(
+      CartItem.findByIdAndUpdate(id, data, { new: true, returnDocument: 'after' })
+    );
 
     if (!updatedItem) {
       return res.status(404).json({ success: false, message: "CartItem topilmadi" });
@@ -132,7 +141,7 @@ const getCartItemById = async (req, res) => {
       return res.status(400).json({ message: "Validatsiya xatoligi: Noto'g'ri ObjectId kiritildi" });
     }
 
-    const item = await CartItem.findById(id);
+    const item = await populateCartItem(CartItem.findById(id));
 
     if (!item) {
       return res.status(404).json({ message: "CartItem topilmadi" });
@@ -162,7 +171,9 @@ const searchCartItem = async (req, res) => {
       orConditions.push({ ticket_id: query });
     }
 
-    const result = await CartItem.find(orConditions.length > 0 ? { $or: orConditions } : {});
+    const result = await populateCartItem(
+      CartItem.find(orConditions.length > 0 ? { $or: orConditions } : {})
+    );
 
     if (result.length === 0) {
       return res.json({ message: "Bunday element topilmadi" });

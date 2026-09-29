@@ -6,6 +6,11 @@ const mongoose = require("mongoose");
 
 const isValidObjectId = (id) => typeof id === "string" && /^[0-9a-fA-F]{24}$/.test(id);
 
+const populateVenue = (query) =>
+  query
+    .populate("region_id")
+    .populate("district_id");
+
 // --------------- Post / Create ---------------
 const postVenue = async (req, res) => {
   try {
@@ -28,10 +33,12 @@ const postVenue = async (req, res) => {
     const newVenue = new Venue(data);
     await newVenue.save();
 
+    const populated = await populateVenue(Venue.findById(newVenue._id));
+
     return res.status(201).json({
       success: true,
       message: "Venue muvaffaqiyatli yaratildi.",
-      data: newVenue,
+      data: populated,
     });
   } catch (error) {
     console.error("Error creating Venue:", error);
@@ -59,14 +66,14 @@ const searchVenue = async (req, res) => {
       return res.status(400).json({ message: "Invalid search query." });
     }
 
-    const result = await Venue.find({
+    const result = await populateVenue(Venue.find({
       $or: [
         { name: { $regex: query, $options: "i" } },
         { address: { $regex: query, $options: "i" } },
         { site: { $regex: query, $options: "i" } },
         { phone: { $regex: query, $options: "i" } },
       ],
-    });
+    }));
 
     if (result.length === 0) {
       return res.json({ message: "Bunday joy topilmadi" });
@@ -82,7 +89,7 @@ const searchVenue = async (req, res) => {
 // --------------- Get All ---------------
 const getVenues = async (req, res) => {
   try {
-    const items = await Venue.find();
+    const items = await populateVenue(Venue.find());
     res.status(200).json({
       success: true,
       message: "Barcha venuelar muvaffaqiyatli olindi.",
@@ -125,7 +132,9 @@ const updateVenue = async (req, res) => {
       });
     }
 
-    const updatedItem = await Venue.findByIdAndUpdate(id, data, { new: true, returnDocument: 'after' });
+    const updatedItem = await populateVenue(
+      Venue.findByIdAndUpdate(id, data, { new: true, returnDocument: 'after' })
+    );
 
     if (!updatedItem) {
       return res.status(404).json({
@@ -186,7 +195,7 @@ const getVenueById = async (req, res) => {
       return res.status(400).json({ message: "Validatsiya xatoligi: Noto'g'ri ObjectId kiritildi" });
     }
 
-    const item = await Venue.findById(id);
+    const item = await populateVenue(Venue.findById(id));
 
     if (!item) {
       return res.status(404).json({ message: "Venue topilmadi" });

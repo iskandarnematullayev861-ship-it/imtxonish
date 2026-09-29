@@ -1,6 +1,11 @@
 const { VenueTypes } = require("../models/venue_types.model");
 const mongoose = require("mongoose");
 
+const populateVenueTypes = (query) =>
+  query
+    .populate("venueId")
+    .populate("typeId");
+
 // --------------- Post / Create ---------------
 const postVenueTypes = async (req, res) => {
   try {
@@ -8,10 +13,12 @@ const postVenueTypes = async (req, res) => {
     const newVenueTypes = new VenueTypes(data);
     await newVenueTypes.save();
 
+    const populated = await populateVenueTypes(VenueTypes.findById(newVenueTypes._id));
+
     return res.status(201).json({
       success: true,
       message: "VenueTypes muvaffaqiyatli yaratildi.",
-      data: newVenueTypes,
+      data: populated,
     });
   } catch (error) {
     console.error("Error creating VenueTypes:", error);
@@ -26,7 +33,7 @@ const postVenueTypes = async (req, res) => {
 // --------------- Get All ---------------
 const getVenueTypesList = async (req, res) => {
   try {
-    const items = await VenueTypes.find();
+    const items = await populateVenueTypes(VenueTypes.find());
     res.status(200).json({
       success: true,
       message: "Barcha venue_typeslar muvaffaqiyatli olindi.",
@@ -48,7 +55,9 @@ const updateVenueTypes = async (req, res) => {
     const { id } = req.params;
     const data = req.body;
 
-    const updatedItem = await VenueTypes.findByIdAndUpdate(id, data, { new: true, returnDocument: 'after' });
+    const updatedItem = await populateVenueTypes(
+      VenueTypes.findByIdAndUpdate(id, data, { new: true, returnDocument: 'after' })
+    );
 
     if (!updatedItem) {
       return res.status(404).json({
@@ -94,7 +103,7 @@ const getVenueTypesById = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const item = await VenueTypes.findById(id);
+    const item = await populateVenueTypes(VenueTypes.findById(id));
 
     if (!item) {
       return res.status(404).json({ message: "VenueTypes topilmadi" });

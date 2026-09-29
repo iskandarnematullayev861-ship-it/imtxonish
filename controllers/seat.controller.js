@@ -1,6 +1,12 @@
 const { Seat } = require("../models/seat.model");
 const mongoose = require("mongoose");
 
+const populateSeat = (query) =>
+  query
+    .populate("sector_id")
+    .populate("venue_id")
+    .populate("seat_type_id");
+
 // --------------- Post / Create ---------------
 const postSeat = async (req, res) => {
   try {
@@ -8,10 +14,12 @@ const postSeat = async (req, res) => {
     const newSeat = new Seat(data);
     await newSeat.save();
 
+    const populated = await populateSeat(Seat.findById(newSeat._id));
+
     return res.status(201).json({
       success: true,
       message: "Seat muvaffaqiyatli yaratildi.",
-      data: newSeat,
+      data: populated,
     });
   } catch (error) {
     console.error("Error creating Seat:", error);
@@ -42,7 +50,7 @@ const searchSeat = async (req, res) => {
       orConditions.push({ number: numQuery });
     }
 
-    const result = await Seat.find({ $or: orConditions });
+    const result = await populateSeat(Seat.find({ $or: orConditions }));
 
     if (result.length === 0) {
       return res.json({ message: "Bunday o'rindiq topilmadi" });
@@ -58,7 +66,7 @@ const searchSeat = async (req, res) => {
 // --------------- Get All ---------------
 const getSeats = async (req, res) => {
   try {
-    const items = await Seat.find();
+    const items = await populateSeat(Seat.find());
     res.status(200).json({
       success: true,
       message: "Barcha seatlar muvaffaqiyatli olindi.",
@@ -80,7 +88,9 @@ const updateSeat = async (req, res) => {
     const { id } = req.params;
     const data = req.body;
 
-    const updatedItem = await Seat.findByIdAndUpdate(id, data, { new: true, returnDocument: 'after' });
+    const updatedItem = await populateSeat(
+      Seat.findByIdAndUpdate(id, data, { new: true, returnDocument: 'after' })
+    );
 
     if (!updatedItem) {
       return res.status(404).json({
@@ -126,7 +136,7 @@ const getSeatById = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const item = await Seat.findById(id);
+    const item = await populateSeat(Seat.findById(id));
 
     if (!item) {
       return res.status(404).json({ message: "Seat topilmadi" });

@@ -1,6 +1,8 @@
 const { CustomerCard } = require("../models/customer_card.model");
 const mongoose = require("mongoose");
 
+const populateCustomerCard = (query) => query.populate("customer_id");
+
 // --------------- Post / Create ---------------
 const postCustomerCard = async (req, res) => {
   try {
@@ -32,15 +34,17 @@ const searchCustomerCard = async (req, res) => {
       return res.status(400).json({ message: "Invalid search query." });
     }
 
-    const result = await CustomerCard.find({
-      $or: [
-        { name: { $regex: query, $options: "i" } },
-        { phone: { $regex: query, $options: "i" } },
-        { number: { $regex: query, $options: "i" } },
-        { year: { $regex: query, $options: "i" } },
-        { month: { $regex: query, $options: "i" } },
-      ],
-    });
+    const result = await populateCustomerCard(
+      CustomerCard.find({
+        $or: [
+          { name: { $regex: query, $options: "i" } },
+          { phone: { $regex: query, $options: "i" } },
+          { number: { $regex: query, $options: "i" } },
+          { year: { $regex: query, $options: "i" } },
+          { month: { $regex: query, $options: "i" } },
+        ],
+      })
+    );
 
     if (result.length === 0) {
       return res.json({ message: "Bunday karta topilmadi" });
@@ -56,7 +60,7 @@ const searchCustomerCard = async (req, res) => {
 // --------------- Get All ---------------
 const getCustomerCards = async (req, res) => {
   try {
-    const items = await CustomerCard.find();
+    const items = await populateCustomerCard(CustomerCard.find());
     res.status(200).json({
       success: true,
       message: "Barcha customer_cardlar muvaffaqiyatli olindi.",
@@ -78,7 +82,9 @@ const updateCustomerCard = async (req, res) => {
     const { id } = req.params;
     const data = req.body;
 
-    const updatedItem = await CustomerCard.findByIdAndUpdate(id, data, { new: true, returnDocument: 'after' });
+    const updatedItem = await populateCustomerCard(
+      CustomerCard.findByIdAndUpdate(id, data, { new: true, returnDocument: 'after' })
+    );
 
     if (!updatedItem) {
       return res.status(404).json({
@@ -124,7 +130,7 @@ const getCustomerCardById = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const item = await CustomerCard.findById(id);
+    const item = await populateCustomerCard(CustomerCard.findById(id));
 
     if (!item) {
       return res.status(404).json({ message: "CustomerCard topilmadi" });
@@ -145,3 +151,4 @@ module.exports = {
   deleteCustomerCard,
   getCustomerCardById,
 };
+

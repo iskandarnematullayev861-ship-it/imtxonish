@@ -1,6 +1,13 @@
 const { CustomerAddress } = require("../models/customer_address.model");
 const mongoose = require("mongoose");
 
+const populateCustomerAddress = (query) =>
+  query
+    .populate("customer_id")
+    .populate("region_id")
+    .populate("district_id")
+    .populate("flat_id");
+
 // --------------- Post / Create ---------------
 const postCustomerAddress = async (req, res) => {
   try {
@@ -8,10 +15,12 @@ const postCustomerAddress = async (req, res) => {
     const newCustomerAddress = new CustomerAddress(data);
     await newCustomerAddress.save();
 
+    const populated = await populateCustomerAddress(CustomerAddress.findById(newCustomerAddress._id));
+
     return res.status(201).json({
       success: true,
       message: "CustomerAddress muvaffaqiyatli yaratildi.",
-      data: newCustomerAddress,
+      data: populated,
     });
   } catch (error) {
     console.error("Error creating CustomerAddress:", error);
@@ -32,7 +41,7 @@ const searchCustomerAddress = async (req, res) => {
       return res.status(400).json({ message: "Invalid search query." });
     }
 
-    const result = await CustomerAddress.find({
+    const result = await populateCustomerAddress(CustomerAddress.find({
       $or: [
         { name: { $regex: query, $options: "i" } },
         { street: { $regex: query, $options: "i" } },
@@ -41,7 +50,7 @@ const searchCustomerAddress = async (req, res) => {
         { post_index: { $regex: query, $options: "i" } },
         { info: { $regex: query, $options: "i" } },
       ],
-    });
+    }));
 
     if (result.length === 0) {
       return res.json({ message: "Bunday manzil topilmadi" });
@@ -57,7 +66,7 @@ const searchCustomerAddress = async (req, res) => {
 // --------------- Get All ---------------
 const getCustomerAddresses = async (req, res) => {
   try {
-    const items = await CustomerAddress.find();
+    const items = await populateCustomerAddress(CustomerAddress.find());
     res.status(200).json({
       success: true,
       message: "Barcha customer_addresslar muvaffaqiyatli olindi.",
@@ -79,7 +88,9 @@ const updateCustomerAddress = async (req, res) => {
     const { id } = req.params;
     const data = req.body;
 
-    const updatedItem = await CustomerAddress.findByIdAndUpdate(id, data, { new: true, returnDocument: 'after' });
+    const updatedItem = await populateCustomerAddress(
+      CustomerAddress.findByIdAndUpdate(id, data, { new: true, returnDocument: 'after' })
+    );
 
     if (!updatedItem) {
       return res.status(404).json({
@@ -125,7 +136,7 @@ const getCustomerAddressById = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const item = await CustomerAddress.findById(id);
+    const item = await populateCustomerAddress(CustomerAddress.findById(id));
 
     if (!item) {
       return res.status(404).json({ message: "CustomerAddress topilmadi" });

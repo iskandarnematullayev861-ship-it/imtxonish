@@ -1,6 +1,8 @@
 const { HumanCategory } = require("../models/human_category.model");
 const mongoose = require("mongoose");
 
+const populateHumanCategory = (query) => query.populate("gender_id");
+
 // --------------- Post / Create ---------------
 const postHumanCategory = async (req, res) => {
   try {
@@ -8,10 +10,12 @@ const postHumanCategory = async (req, res) => {
     const newHumanCategory = new HumanCategory(data);
     await newHumanCategory.save();
 
+    const populated = await populateHumanCategory(HumanCategory.findById(newHumanCategory._id));
+
     return res.status(201).json({
       success: true,
       message: "HumanCategory muvaffaqiyatli yaratildi.",
-      data: newHumanCategory,
+      data: populated,
     });
   } catch (error) {
     console.error("Error creating HumanCategory:", error);
@@ -32,11 +36,11 @@ const searchHumanCategory = async (req, res) => {
       return res.status(400).json({ message: "Invalid search query." });
     }
 
-    const result = await HumanCategory.find({
+    const result = await populateHumanCategory(HumanCategory.find({
       $or: [
         { name: { $regex: query, $options: "i" } },
       ],
-    });
+    }));
 
     if (result.length === 0) {
       return res.json({ message: "Bunday toifa topilmadi" });
@@ -52,7 +56,7 @@ const searchHumanCategory = async (req, res) => {
 // --------------- Get All ---------------
 const getHumanCategories = async (req, res) => {
   try {
-    const items = await HumanCategory.find();
+    const items = await populateHumanCategory(HumanCategory.find());
     res.status(200).json({
       success: true,
       message: "Barcha human_categorylar muvaffaqiyatli olindi.",
@@ -74,7 +78,9 @@ const updateHumanCategory = async (req, res) => {
     const { id } = req.params;
     const data = req.body;
 
-    const updatedItem = await HumanCategory.findByIdAndUpdate(id, data, { new: true, returnDocument: 'after' });
+    const updatedItem = await populateHumanCategory(
+      HumanCategory.findByIdAndUpdate(id, data, { new: true, returnDocument: 'after' })
+    );
 
     if (!updatedItem) {
       return res.status(404).json({
@@ -120,7 +126,7 @@ const getHumanCategoryById = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const item = await HumanCategory.findById(id);
+    const item = await populateHumanCategory(HumanCategory.findById(id));
 
     if (!item) {
       return res.status(404).json({ message: "HumanCategory topilmadi" });

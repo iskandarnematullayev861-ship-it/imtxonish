@@ -1,6 +1,11 @@
 const { Customer } = require("../models/customer.model");
 const mongoose = require("mongoose");
 
+const populateCustomer = (query) =>
+  query
+    .populate("gender_id")
+    .populate("lang_id");
+
 // --------------- Post / Create ---------------
 const postCustomer = async (req, res) => {
   try {
@@ -19,10 +24,12 @@ const postCustomer = async (req, res) => {
     const newCustomer = new Customer(data);
     await newCustomer.save();
 
+    const populated = await populateCustomer(Customer.findById(newCustomer._id));
+
     return res.status(201).json({
       success: true,
       message: "Customer muvaffaqiyatli yaratildi.",
-      data: newCustomer,
+      data: populated,
     });
   } catch (error) {
     console.error("Error creating Customer:", error);
@@ -50,14 +57,14 @@ const searchCustomer = async (req, res) => {
       return res.status(400).json({ message: "Invalid search query." });
     }
 
-    const result = await Customer.find({
+    const result = await populateCustomer(Customer.find({
       $or: [
         { first_name: { $regex: query, $options: "i" } },
         { last_name: { $regex: query, $options: "i" } },
         { phone: { $regex: query, $options: "i" } },
         { email: { $regex: query, $options: "i" } },
       ],
-    });
+    }));
 
     if (result.length === 0) {
       return res.json({ message: "Bunday mijoz topilmadi" });
@@ -73,7 +80,7 @@ const searchCustomer = async (req, res) => {
 // --------------- Get All ---------------
 const getCustomers = async (req, res) => {
   try {
-    const items = await Customer.find();
+    const items = await populateCustomer(Customer.find());
     res.status(200).json({
       success: true,
       message: "Barcha customerlar muvaffaqiyatli olindi.",
@@ -105,7 +112,9 @@ const updateCustomer = async (req, res) => {
       }
     }
 
-    const updatedItem = await Customer.findByIdAndUpdate(id, data, { new: true, returnDocument: 'after' });
+    const updatedItem = await populateCustomer(
+      Customer.findByIdAndUpdate(id, data, { new: true, returnDocument: 'after' })
+    );
 
     if (!updatedItem) {
       return res.status(404).json({
@@ -159,7 +168,7 @@ const getCustomerById = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const item = await Customer.findById(id);
+    const item = await populateCustomer(Customer.findById(id));
 
     if (!item) {
       return res.status(404).json({ message: "Customer topilmadi" });

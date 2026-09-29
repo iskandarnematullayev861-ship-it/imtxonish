@@ -1,6 +1,8 @@
 const { EventType } = require("../models/event_type.model");
 const mongoose = require("mongoose");
 
+const populateEventType = (query) => query.populate("parent_event_type_id");
+
 // --------------- Post / Create ---------------
 const postEventType = async (req, res) => {
   try {
@@ -32,11 +34,13 @@ const searchEventType = async (req, res) => {
       return res.status(400).json({ message: "Invalid search query." });
     }
 
-    const result = await EventType.find({
-      $or: [
-        { name: { $regex: query, $options: "i" } },
-      ],
-    });
+    const result = await populateEventType(
+      EventType.find({
+        $or: [
+          { name: { $regex: query, $options: "i" } },
+        ],
+      })
+    );
 
     if (result.length === 0) {
       return res.json({ message: "Bunday tadbir turi topilmadi" });
@@ -52,7 +56,7 @@ const searchEventType = async (req, res) => {
 // --------------- Get All ---------------
 const getEventTypes = async (req, res) => {
   try {
-    const items = await EventType.find();
+    const items = await populateEventType(EventType.find());
     res.status(200).json({
       success: true,
       message: "Barcha event_typelar muvaffaqiyatli olindi.",
@@ -74,7 +78,9 @@ const updateEventType = async (req, res) => {
     const { id } = req.params;
     const data = req.body;
 
-    const updatedItem = await EventType.findByIdAndUpdate(id, data, { new: true, returnDocument: 'after' });
+    const updatedItem = await populateEventType(
+      EventType.findByIdAndUpdate(id, data, { new: true, returnDocument: 'after' })
+    );
 
     if (!updatedItem) {
       return res.status(404).json({
@@ -120,7 +126,7 @@ const getEventTypeById = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const item = await EventType.findById(id);
+    const item = await populateEventType(EventType.findById(id));
 
     if (!item) {
       return res.status(404).json({ message: "EventType topilmadi" });
@@ -141,3 +147,4 @@ module.exports = {
   deleteEventType,
   getEventTypeById,
 };
+

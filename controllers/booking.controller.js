@@ -4,6 +4,14 @@ const mongoose = require("mongoose");
 
 const isValidObjectId = (id) => typeof id === "string" && /^[0-9a-fA-F]{24}$/.test(id);
 
+const populateBooking = (query) =>
+  query
+    .populate("cart_id")
+    .populate("payment_method_id")
+    .populate("delivery_method_id")
+    .populate("discount_id")
+    .populate("status_id");
+
 // --------------- Post / Create ---------------
 const postBooking = async (req, res) => {
   try {
@@ -23,10 +31,12 @@ const postBooking = async (req, res) => {
     const newBooking = new Booking(data);
     await newBooking.save();
 
+    const populated = await populateBooking(Booking.findById(newBooking._id));
+
     return res.status(201).json({
       success: true,
       message: "Booking muvaffaqiyatli yaratildi.",
-      data: newBooking,
+      data: populated,
     });
   } catch (error) {
     console.error("Error creating Booking:", error);
@@ -65,7 +75,9 @@ const searchBooking = async (req, res) => {
       orConditions.push({ status_id: query });
     }
 
-    const result = await Booking.find(orConditions.length > 0 ? { $or: orConditions } : {});
+    const result = await populateBooking(
+      Booking.find(orConditions.length > 0 ? { $or: orConditions } : {})
+    );
 
     if (result.length === 0) {
       return res.json({ message: "Bunday buyurtma topilmadi" });
@@ -81,7 +93,7 @@ const searchBooking = async (req, res) => {
 // --------------- Get All ---------------
 const getBookings = async (req, res) => {
   try {
-    const items = await Booking.find();
+    const items = await populateBooking(Booking.find());
     res.status(200).json({
       success: true,
       message: "Barcha bookinglar muvaffaqiyatli olindi.",
@@ -107,7 +119,9 @@ const updateBooking = async (req, res) => {
       return res.status(400).json({ success: false, message: "Validatsiya xatoligi: Kiritilgan ID (param) to'g'ri ObjectId emas." });
       }
 
-    const updatedItem = await Booking.findByIdAndUpdate(id, data, { new: true, returnDocument: 'after' });
+    const updatedItem = await populateBooking(
+      Booking.findByIdAndUpdate(id, data, { new: true, returnDocument: 'after' })
+    );
 
     if (!updatedItem) {
       return res.status(404).json({ success: false, message: "Booking topilmadi" });
@@ -161,7 +175,7 @@ const getBookingById = async (req, res) => {
       return res.status(400).json({ message: "Validatsiya xatoligi: Noto'g'ri ObjectId kiritildi" });
     }
 
-    const item = await Booking.findById(id);
+    const item = await populateBooking(Booking.findById(id));
 
     if (!item) {
       return res.status(404).json({ message: "Booking topilmadi" });

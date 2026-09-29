@@ -1,6 +1,8 @@
 const { VenuePhoto } = require("../models/venue_photo.model");
 const mongoose = require("mongoose");
 
+const populateVenuePhoto = (query) => query.populate("venueId");
+
 // --------------- Post / Create ---------------
 const postVenuePhoto = async (req, res) => {
   try {
@@ -8,10 +10,12 @@ const postVenuePhoto = async (req, res) => {
     const newVenuePhoto = new VenuePhoto(data);
     await newVenuePhoto.save();
 
+    const populated = await populateVenuePhoto(VenuePhoto.findById(newVenuePhoto._id));
+
     return res.status(201).json({
       success: true,
       message: "VenuePhoto muvaffaqiyatli yaratildi.",
-      data: newVenuePhoto,
+      data: populated,
     });
   } catch (error) {
     console.error("Error creating VenuePhoto:", error);
@@ -32,11 +36,11 @@ const searchVenuePhoto = async (req, res) => {
       return res.status(400).json({ message: "Invalid search query." });
     }
 
-    const result = await VenuePhoto.find({
+    const result = await populateVenuePhoto(VenuePhoto.find({
       $or: [
         { url: { $regex: query, $options: "i" } },
       ],
-    });
+    }));
 
     if (result.length === 0) {
       return res.json({ message: "Bunday rasm topilmadi" });
@@ -52,7 +56,7 @@ const searchVenuePhoto = async (req, res) => {
 // --------------- Get All ---------------
 const getVenuePhotos = async (req, res) => {
   try {
-    const items = await VenuePhoto.find();
+    const items = await populateVenuePhoto(VenuePhoto.find());
     res.status(200).json({
       success: true,
       message: "Barcha venue_photolar muvaffaqiyatli olindi.",
@@ -74,7 +78,9 @@ const updateVenuePhoto = async (req, res) => {
     const { id } = req.params;
     const data = req.body;
 
-    const updatedItem = await VenuePhoto.findByIdAndUpdate(id, data, { new: true, returnDocument: 'after' });
+    const updatedItem = await populateVenuePhoto(
+      VenuePhoto.findByIdAndUpdate(id, data, { new: true, returnDocument: 'after' })
+    );
 
     if (!updatedItem) {
       return res.status(404).json({
@@ -120,7 +126,7 @@ const getVenuePhotoById = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const item = await VenuePhoto.findById(id);
+    const item = await populateVenuePhoto(VenuePhoto.findById(id));
 
     if (!item) {
       return res.status(404).json({ message: "VenuePhoto topilmadi" });

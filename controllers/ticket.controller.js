@@ -1,6 +1,13 @@
 const { Ticket } = require("../models/ticket.model");
 const mongoose = require("mongoose");
 
+const populateTicket = (query) =>
+  query
+    .populate("event_id")
+    .populate("seat_id")
+    .populate("status_id")
+    .populate("ticket_type_id");
+
 // --------------- Post / Create ---------------
 const postTicket = async (req, res) => {
   try {
@@ -8,10 +15,12 @@ const postTicket = async (req, res) => {
     const newTicket = new Ticket(data);
     await newTicket.save();
 
+    const populated = await populateTicket(Ticket.findById(newTicket._id));
+
     return res.status(201).json({
       success: true,
       message: "Ticket muvaffaqiyatli yaratildi.",
-      data: newTicket,
+      data: populated,
     });
   } catch (error) {
     console.error("Error creating Ticket:", error);
@@ -40,7 +49,9 @@ const searchTicket = async (req, res) => {
       orConditions.push({ service_fee: numQuery });
     }
 
-    const result = await Ticket.find(orConditions.length > 0 ? { $or: orConditions } : {});
+    const result = await populateTicket(
+      Ticket.find(orConditions.length > 0 ? { $or: orConditions } : {})
+    );
 
     if (result.length === 0) {
       return res.json({ message: "Bunday chipta topilmadi" });
@@ -56,7 +67,7 @@ const searchTicket = async (req, res) => {
 // --------------- Get All ---------------
 const getTickets = async (req, res) => {
   try {
-    const items = await Ticket.find();
+    const items = await populateTicket(Ticket.find());
     res.status(200).json({
       success: true,
       message: "Barcha ticketlar muvaffaqiyatli olindi.",
@@ -78,7 +89,9 @@ const updateTicket = async (req, res) => {
     const { id } = req.params;
     const data = req.body;
 
-    const updatedItem = await Ticket.findByIdAndUpdate(id, data, { new: true, returnDocument: 'after' });
+    const updatedItem = await populateTicket(
+      Ticket.findByIdAndUpdate(id, data, { new: true, returnDocument: 'after' })
+    );
 
     if (!updatedItem) {
       return res.status(404).json({
@@ -124,7 +137,7 @@ const getTicketById = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const item = await Ticket.findById(id);
+    const item = await populateTicket(Ticket.findById(id));
 
     if (!item) {
       return res.status(404).json({ message: "Ticket topilmadi" });
